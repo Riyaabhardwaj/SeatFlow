@@ -4,7 +4,7 @@ import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 import authRoutes from "./modules/auth/auth.routes.js";
-
+import eventRoutes from "./modules/events/event.routes.js";
 import { connectDatabase } from "./config/database.js";
 dotenv.config();
 
@@ -21,7 +21,7 @@ app.use(
 
 app.use(express.json());
 app.use(cookieParser());
-
+app.use("/api/events", eventRoutes);
 app.get("/api/health", (_req, res) => {
   res.status(200).json({
     success: true,
