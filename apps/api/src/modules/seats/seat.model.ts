@@ -1,8 +1,12 @@
 import { Schema, model, Types } from "mongoose";
 
-export type SeatStatus = "AVAILABLE" | "BLOCKED";
+export type SeatStatus =
+  | "AVAILABLE"
+  | "BLOCKED"
+  | "BOOKED";
 
 export interface ISeat {
+  _id: Types.ObjectId;
   eventId: Types.ObjectId;
   row: string;
   number: number;
@@ -11,7 +15,6 @@ export interface ISeat {
   price: number;
   status: SeatStatus;
 }
-
 const seatSchema = new Schema<ISeat>(
   {
     eventId: {
@@ -25,6 +28,7 @@ const seatSchema = new Schema<ISeat>(
       type: String,
       required: true,
       trim: true,
+      uppercase: true,
     },
 
     number: {
@@ -37,6 +41,7 @@ const seatSchema = new Schema<ISeat>(
       type: String,
       required: true,
       trim: true,
+      uppercase: true,
     },
 
     category: {
@@ -53,7 +58,11 @@ const seatSchema = new Schema<ISeat>(
 
     status: {
       type: String,
-      enum: ["AVAILABLE", "BLOCKED"],
+      enum: [
+        "AVAILABLE",
+        "BOOKED",
+        "BLOCKED",
+      ],
       default: "AVAILABLE",
       index: true,
     },
@@ -63,6 +72,7 @@ const seatSchema = new Schema<ISeat>(
   }
 );
 
+// Prevent duplicate seat labels within the same event.
 seatSchema.index(
   {
     eventId: 1,
@@ -73,4 +83,14 @@ seatSchema.index(
   }
 );
 
-export const Seat = model<ISeat>("Seat", seatSchema);
+// Optimize seat-map queries and ordering.
+seatSchema.index({
+  eventId: 1,
+  row: 1,
+  number: 1,
+});
+
+export const Seat = model<ISeat>(
+  "Seat",
+  seatSchema
+);

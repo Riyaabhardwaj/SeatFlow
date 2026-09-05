@@ -1,32 +1,28 @@
 import { Schema, model, Types } from "mongoose";
 
 export type BookingStatus =
-  | "PENDING"
+  | "PENDING_PAYMENT"
   | "CONFIRMED"
   | "FAILED"
-  | "EXPIRED"
   | "CANCELLED";
 
 export type PaymentStatus =
-  | "CREATED"
   | "PENDING"
-  | "AUTHORIZED"
-  | "CAPTURED"
+  | "PAID"
   | "FAILED"
-  | "REFUNDED"
-  | "PARTIALLY_REFUNDED";
+  | "REFUNDED";
 
 export interface IBooking {
   bookingReference: string;
   userId: Types.ObjectId;
   eventId: Types.ObjectId;
+  holdId: Types.ObjectId;
   seatIds: Types.ObjectId[];
-  amount: number;
-  status: BookingStatus;
+  totalAmount: number;
+  bookingStatus: BookingStatus;
   paymentStatus: PaymentStatus;
-  idempotencyKey: string;
-  expiresAt?: Date;
-  cancelledAt?: Date;
+  razorpayOrderId?: string;
+  razorpayPaymentId?: string;
 }
 
 const bookingSchema = new Schema<IBooking>(
@@ -52,6 +48,13 @@ const bookingSchema = new Schema<IBooking>(
       index: true,
     },
 
+    holdId: {
+      type: Schema.Types.ObjectId,
+      ref: "Hold",
+      required: true,
+      unique: true,
+    },
+
     seatIds: [
       {
         type: Schema.Types.ObjectId,
@@ -60,68 +63,63 @@ const bookingSchema = new Schema<IBooking>(
       },
     ],
 
-    amount: {
+    totalAmount: {
       type: Number,
       required: true,
       min: 0,
     },
 
-    status: {
+    bookingStatus: {
       type: String,
       enum: [
-        "PENDING",
+        "PENDING_PAYMENT",
         "CONFIRMED",
         "FAILED",
-        "EXPIRED",
         "CANCELLED",
       ],
-      default: "PENDING",
+      default: "PENDING_PAYMENT",
       index: true,
     },
 
     paymentStatus: {
       type: String,
       enum: [
-        "CREATED",
         "PENDING",
-        "AUTHORIZED",
-        "CAPTURED",
+        "PAID",
         "FAILED",
         "REFUNDED",
-        "PARTIALLY_REFUNDED",
       ],
-      default: "CREATED",
+      default: "PENDING",
       index: true,
     },
+    razorpayOrderId: {
+  type: String,
+  sparse: true,
+  index: true,
+},
 
-    idempotencyKey: {
-      type: String,
-      required: true,
-      index: true,
-    },
-
-    expiresAt: {
-      type: Date,
-      index: true,
-    },
-
-    cancelledAt: {
-      type: Date,
-    },
+razorpayPaymentId: {
+  type: String,
+  sparse: true,
+  index: true,
+},
   },
   {
     timestamps: true,
   }
 );
 
-bookingSchema.index(
-  {
-    userId: 1,
-    idempotencyKey: 1,
-  },
-  {
-    unique: true,
-  }
-);
+bookingSchema.index({
+  userId: 1,
+  createdAt: -1,
+});
 
-export const Booking = model<IBooking>("Booking", bookingSchema);
+bookingSchema.index({
+  eventId: 1,
+  bookingStatus: 1,
+});
+
+export const Booking = model<IBooking>(
+  "Booking",
+  bookingSchema
+);

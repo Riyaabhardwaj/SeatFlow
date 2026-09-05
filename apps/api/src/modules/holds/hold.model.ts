@@ -3,16 +3,15 @@ import { Schema, model, Types } from "mongoose";
 export type HoldStatus =
   | "ACTIVE"
   | "EXPIRED"
-  | "RELEASED"
-  | "CONVERTED";
+  | "CONVERTED"
+  | "CANCELLED";
 
 export interface IHold {
   userId: Types.ObjectId;
   eventId: Types.ObjectId;
-  seatId: Types.ObjectId;
-  bookingId?: Types.ObjectId;
-  status: HoldStatus;
+  seatIds: Types.ObjectId[];
   expiresAt: Date;
+  status: HoldStatus;
 }
 
 const holdSchema = new Schema<IHold>(
@@ -31,17 +30,18 @@ const holdSchema = new Schema<IHold>(
       index: true,
     },
 
-    seatId: {
-      type: Schema.Types.ObjectId,
-      ref: "Seat",
-      required: true,
-      index: true,
-    },
+    seatIds: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "Seat",
+        required: true,
+      },
+    ],
 
-    bookingId: {
-      type: Schema.Types.ObjectId,
-      ref: "Booking",
-      index: true,
+    expiresAt: {
+      type: Date,
+      required: true,
+      //index: true,
     },
 
     status: {
@@ -49,16 +49,10 @@ const holdSchema = new Schema<IHold>(
       enum: [
         "ACTIVE",
         "EXPIRED",
-        "RELEASED",
         "CONVERTED",
+        "CANCELLED",
       ],
       default: "ACTIVE",
-      index: true,
-    },
-
-    expiresAt: {
-      type: Date,
-      required: true,
       index: true,
     },
   },
@@ -67,18 +61,9 @@ const holdSchema = new Schema<IHold>(
   }
 );
 
-holdSchema.index(
-  {
-    eventId: 1,
-    seatId: 1,
-    status: 1,
-  },
-  {
-    unique: true,
-    partialFilterExpression: {
-      status: "ACTIVE",
-    },
-  }
-);
+// holdSchema.index(
+//   { expiresAt: 1 },
+//   { expireAfterSeconds: 0 }
+// );
 
 export const Hold = model<IHold>("Hold", holdSchema);
