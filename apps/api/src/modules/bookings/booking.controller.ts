@@ -1,10 +1,9 @@
 import { Request, Response } from "express";
 
 import { createBookingSchema } from "./booking.schema.js";
-import { createBooking } from "./booking.service";
+import { createBooking } from "./booking.service.js";
 
-interface AuthenticatedRequest
-  extends Request {
+interface AuthenticatedRequest extends Request {
   user?: {
     userId: string;
   };
@@ -36,24 +35,41 @@ export async function createBookingController(
       });
     }
 
-    // 3. Create booking from the user's hold
+    // 3. Create booking from user's hold
     const booking = await createBooking(
       validation.data.holdId,
       req.user.userId
     );
+
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: "Booking not found",
+      });
+    }
+
+    const bookingData = booking as {
+      _id: unknown;
+      bookingReference: string;
+      eventId: unknown;
+      seatIds: unknown;
+      totalAmount: number;
+      bookingStatus: string;
+      paymentStatus: string;
+    };
 
     // 4. Return booking information
     return res.status(201).json({
       success: true,
       message: "Booking created successfully",
       data: {
-        bookingId: booking._id,
-        bookingReference: booking.bookingReference,
-        eventId: booking.eventId,
-        seatIds: booking.seatIds,
-        totalAmount: booking.totalAmount,
-        bookingStatus: booking.bookingStatus,
-        paymentStatus: booking.paymentStatus,
+        bookingId: bookingData._id,
+        bookingReference: bookingData.bookingReference,
+        eventId: bookingData.eventId,
+        seatIds: bookingData.seatIds,
+        totalAmount: bookingData.totalAmount,
+        bookingStatus: bookingData.bookingStatus,
+        paymentStatus: bookingData.paymentStatus,
       },
     });
   } catch (error) {
@@ -91,7 +107,9 @@ export async function createBookingController(
 
     if (
       message === "Hold has expired" ||
-      message.startsWith("Hold cannot be used because it is")
+      message.startsWith(
+        "Hold cannot be used because it is"
+      )
     ) {
       return res.status(409).json({
         success: false,
@@ -109,14 +127,19 @@ export async function createBookingController(
       });
     }
 
-    if (message.includes("is no longer available")) {
+    if (
+      message.includes("is no longer available")
+    ) {
       return res.status(409).json({
         success: false,
         message,
       });
     }
 
-    console.error("Create booking error:", error);
+    console.error(
+      "Create booking error:",
+      error
+    );
 
     return res.status(500).json({
       success: false,
